@@ -1,17 +1,17 @@
 var PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\n\
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDM/4n9EMJV7PzA\n\
-Tu7JqljqzrZEk2YB/9hbP4s8gUo7FwhBxXfuiMiZx8zYAuMF65mOvw7LVwSJCUV1\n\
+gQEd1/kOj9NZZzCOA9c39Hv1h1+IuwlP0S+cQeveUP2yXQ/aaxgSZvxLfWaG4gJy\n\
 4Ruk2/7XUQJg2ErrjnqHrySz\n\
 -----END PRIVATE KEY-----\n\
 ';
-var GOOGLE_SPREADSHEET_ID = '​xxxx';
-var CLIENT_ID = '​xxxx';
-var CLIENT_SECRET = '​xxxx';
-var PUBLIC_KEY_ID = '​xxxx';
-var ENTERPRISE_ID = '​xxxx';
+var GOOGLE_SPREADSHEET_ID = 'xxxx';
+var CLIENT_ID = 'xxxx;
+var CLIENT_SECRET = 'xxxx';
+var PUBLIC_KEY_ID = 'xxxx';
+var ENTERPRISE_ID = 'xxxx';
 
 ///////////////////////////////////////////////////////////////////
-// Pull all users from Box and write the box user count and user list
+// Pull all users from Box write the box user count and user list
 // into a Google Spreadsheet.  The spreadsheet must have two sheets.
 // One sheet must be called 'User Summary' and the other sheet must
 // be called 'User List'.  The Script is designed to be run nightly 
@@ -20,57 +20,57 @@ var ENTERPRISE_ID = '​xxxx';
 // for specifics on how Box JWT authentication works.
 
 function main() {
-    var accessToken = getAccessToken();
+  var accessToken = getAccessToken();
   var userCount = 1;
   var limit = 100;
   var offset = 0;
   var userList = [];
-
-    while (userCount > offset) {
-      var entries = getUsersFromBox(limit, offset, accessToken);
+  
+  while (userCount > offset) {
+    var entries = getUsersFromBox(limit, offset, accessToken);
     var users = entries['entries'];
-
+    
     for (user in users) {
-        var row = [users[user]['login'], 
+      var row = [users[user]['login'], 
                  users[user]['name'], 
                  users[user]['space_used'], 
                  users[user]['status']];
       userList.push(row);
     }
-
+    
     userCount = entries['total_count'];
     offset = offset + limit;
   }
-    writeUserCount(userCount);
-    writeUserList(userList);
+  writeUserCount(userCount);
+  writeUserList(userList);
 }
 
 function getUsersFromBox(limit, offset, accessToken) {
-    var fetchArgs = {
-      headers: {
-        Authorization : 'Bearer ' + accessToken
+  var fetchArgs = {
+    headers: {
+      Authorization : 'Bearer ' + accessToken
     }
-    };
-
+  };
+  
   var url = 'https://api.box.com/2.0/users?limit='+limit+'&offset='+offset;
   var response = UrlFetchApp.fetch(url, fetchArgs);
   var entries = JSON.parse(response);
-    return(entries);
+  return(entries);
 }
 
 function writeUserCount(userCount) {
-    var spreadsheet = SpreadsheetApp.openById(GOOGLE_SPREADSHEET_ID);
+  var spreadsheet = SpreadsheetApp.openById(GOOGLE_SPREADSHEET_ID);
   var sheet = spreadsheet.getSheetByName('User Summary');
   var cell = sheet.getRange('A1');
   var row = sheet.getLastRow();
   var currentRow = row + 1;
-
+  
   cell.offset(row,0).setValue(new Date());
   cell.offset(row,1).setValue(userCount);
 }
 
 function writeUserList(userList) {
-    var spreadsheet = SpreadsheetApp.openById(GOOGLE_SPREADSHEET_ID);
+  var spreadsheet = SpreadsheetApp.openById(GOOGLE_SPREADSHEET_ID);
   var sheet = spreadsheet.getSheetByName('User List');
   sheet.clear();
 
@@ -83,57 +83,57 @@ function writeUserList(userList) {
 }
 
 function getAccessToken() {
-    var fetchArgs = {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
+  var fetchArgs = {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
     method: 'post',
     payload: {
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
       assertion: generateJWT()
     }
-    };
+  };
 
   var url = 'https://api.box.com/oauth2/token';
   var response = UrlFetchApp.fetch(url, fetchArgs);
   var entries = JSON.parse(response);
 
-    return entries['access_token']
+  return entries['access_token']
 }
 
 function generateJWT() {
-    var header = getHeader();
+  var header = getHeader();
   var claims = getClaims();
   var jwt = header + '.' + claims;
   var signature = Utilities.computeRsaSha256Signature(jwt, PRIVATE_KEY);
   var signed = unPad(Utilities.base64EncodeWebSafe(signature));
-    return jwt + '.' + signed;
+  return jwt + '.' + signed;
 }
 
 function getHeader() {
-    var data = {
-      'alg': 'RS256',
+  var data = {
+    'alg': 'RS256',
     'typ': 'JWT',
     'kid': PUBLIC_KEY_ID
   }
-    return unPad(Utilities.base64EncodeWebSafe(JSON.stringify(data)));
+  return unPad(Utilities.base64EncodeWebSafe(JSON.stringify(data)));
 }
 
 function getClaims() {
-    var assertionTime = new Date();
+  var assertionTime = new Date();
   var data = {
-      'iss': CLIENT_ID,
+    'iss': CLIENT_ID,
     'sub': ENTERPRISE_ID,
     'box_sub_type': 'enterprise',
     'aud': 'https://api.box.com/oauth2/token',
     'jti': Utilities.getUuid(),
     'exp': Math.round(assertionTime.getTime() / 1000 + 60)
   }
-    return unPad(Utilities.base64EncodeWebSafe(JSON.stringify(data)));
+  return unPad(Utilities.base64EncodeWebSafe(JSON.stringify(data)));
 }
 
 function unPad(b64) {
-    return b64 ? b64.split('=')[0] : b64;  
+  return b64 ? b64.split('=')[0] : b64;  
 }
